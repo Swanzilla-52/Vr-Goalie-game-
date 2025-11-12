@@ -1,10 +1,12 @@
 import {
   Mesh,
   MeshStandardMaterial,
-  SphereGeometry,PlaneGeometry,
+  SphereGeometry,
+  PlaneGeometry,
   SessionMode,
   World,
-  LocomotionEnvironment,EnvironmentType
+  LocomotionEnvironment,
+  EnvironmentType
 } from '@iwsdk/core';
 
 import {
@@ -25,25 +27,20 @@ World.create(document.getElementById('scene-container'), {
     features: { }
   },
 
-  features: { locomotion: true },
+  features: { 
+    locomotion: true,
+    grabbing: true, 
+  },
 
 }).then((world) => {
 
   const { camera } = world;
 
-  
-  // Create a green sphere
-  const sphereGeometry = new SphereGeometry(0.25, 32, 32);
-  const greenMaterial = new MeshStandardMaterial({ color: "red" });
-  const sphere = new Mesh(sphereGeometry, greenMaterial);
-  sphere.position.set(1, 1.5, -3);
-  const sphereEntity = world.createTransformEntity(sphere);
-
   // create a floor
-  const floorMesh = new Mesh(new PlaneGeometry(20, 20), new MeshStandardMaterial({color:"tan"}));
-  floorMesh.rotation.x = -Math.PI / 2;
-  const floorEntity = world.createTransformEntity(floorMesh);
-  floorEntity.addComponent(LocomotionEnvironment, { type: EnvironmentType.STATIC });
+  const turf = new Mesh(new PlaneGeometry(20, 20), new MeshStandardMaterial({color:"tan"}));
+  turf.rotation.x = -Math.PI / 2;
+  const turfEntity = world.createTransformEntity(turf);
+  turfEntity.addComponent(LocomotionEnvironment, { type: EnvironmentType.STATIC });
 
 
 
