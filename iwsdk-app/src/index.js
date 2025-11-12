@@ -1,12 +1,13 @@
 import {
   Mesh,
   MeshStandardMaterial,
-  SphereGeometry,
   PlaneGeometry,
   SessionMode,
   World,
   LocomotionEnvironment,
-  EnvironmentType
+  EnvironmentType,
+  AssetManager,
+  AssetType,
 } from '@iwsdk/core';
 
 import {
@@ -17,7 +18,13 @@ import {
 
 import { PanelSystem } from './panel.js'; // system for displaying "Enter VR" panel on Quest 1
 
-const assets = { };
+const assets = {
+  turf: {
+    url: '/gltf/fieldTurf/soccer_field.glb',
+    type: AssetType.GLTF,
+    proirity: 'critical',
+  },
+ };
 
 World.create(document.getElementById('scene-container'), {
   assets,
@@ -41,6 +48,10 @@ World.create(document.getElementById('scene-container'), {
   turf.rotation.x = -Math.PI / 2;
   const turfEntity = world.createTransformEntity(turf);
   turfEntity.addComponent(LocomotionEnvironment, { type: EnvironmentType.STATIC });
+
+  //fieldTurf
+  const fieldModel = AssetManager.getGLTF('turf').scene;
+  const fieldEntity = world.createTransformEntity(fieldModel);
 
 
 
