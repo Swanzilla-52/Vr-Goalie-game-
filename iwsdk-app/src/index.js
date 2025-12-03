@@ -12,6 +12,8 @@ import {
   PhysicsShapeType,
   PhysicsState,
   PhysicsShape,
+  PhysicsSystem,
+  PlaneGeometry,
 } from '@iwsdk/core';
 
 import {
@@ -53,7 +55,7 @@ World.create(document.getElementById('scene-container'), {
 
   const { camera } = world;
 
-  world.registerSystem(PhysicsState).registerComponent(PhysicsBody).registerComponent(PhysicsShape);
+  world.registerSystem(PhysicsSystem).registerComponent(PhysicsBody).registerComponent(PhysicsShape);
   
   //fieldTurf
   const fieldModel = AssetManager.getGLTF('turf').scene;
@@ -107,14 +109,23 @@ World.create(document.getElementById('scene-container'), {
  
   let score = 0;
 
-  goalPlaneEntity.addEventListener("triggerenter", (evt) => {
+  function resetBall() {
+    // reset visual
+    ballMesh.position.set(2, 1, 0);
+
+    // reset physics (adjust to your API if needed)
+    ballBody.linearVelocity = [0, 0, 0];
+    ballBody.angularVelocity = [0, 0, 0];
+  }
+
+  goalPlaneEntity.object3D.addEventListener('triggerenter', (evt) => {
     const other = evt.other;
 
-    if (other === ballEntity) {
+    // other is usually the Object3D for the other collider
+    if (other === ballEntity.object3D) {
       score++;
-      console.log("GOAL! Score =", score);
-
-      ballMesh.position.set(2, 1, 0);
+      console.log('GOAL! Score =', score);
+      resetBall();
     }
   });
 
