@@ -8,6 +8,11 @@ import {
   EnvironmentType,
   AssetManager,
   AssetType,
+  SphereGeometry,
+  PhysicsBody,
+  PhysicsShapeType,
+  PhysicsState,
+  PhysicsShape,
 } from '@iwsdk/core';
 
 import {
@@ -21,6 +26,11 @@ import { PanelSystem } from './panel.js'; // system for displaying "Enter VR" pa
 const assets = {
   turf: {
     url: '/gltf/fieldTurf/soccer_field.glb',
+    type: AssetType.GLTF,
+    proirity: 'critical',
+  },
+  laxGoal: {
+    url: '/gltf/goal/lax_goal.glb',
     type: AssetType.GLTF,
     proirity: 'critical',
   },
@@ -42,16 +52,73 @@ World.create(document.getElementById('scene-container'), {
 }).then((world) => {
 
   const { camera } = world;
-
-  // create a floor
-  const turf = new Mesh(new PlaneGeometry(20, 20), new MeshStandardMaterial({color:"tan"}));
-  turf.rotation.x = -Math.PI / 2;
-  const turfEntity = world.createTransformEntity(turf);
-  turfEntity.addComponent(LocomotionEnvironment, { type: EnvironmentType.STATIC });
-
+  
   //fieldTurf
   const fieldModel = AssetManager.getGLTF('turf').scene;
+
   const fieldEntity = world.createTransformEntity(fieldModel);
+  fieldEntity.addComponent(LocomotionEnvironment, { type: EnvironmentType.STATIC });
+
+  //laxGoal
+  const goalModel = AssetManager.getGLTF('laxGoal').scene;
+  goalModel.position.set(0, .05, .15)
+  goalModel.rotation.y = Math.PI
+
+  const goalEntity = world.createTransformEntity(goalModel);
+
+  const musicEntity = world.createEntity();
+  musicEntity.addComponent(AudioSource, {
+  src: '/audio/marimba-win-b-3-209679.mp3',
+  loop: false,
+  volume: 1, 
+  positional: false
+  });
+
+  //Goal Plane
+  const goalPlane = new Mesh( 
+    new PlaneGeometry(1.8, 2,1),
+    new MeshStandardMaterial({ color: 0xff0000, transparent: true })
+  );
+  goalPlane.position.set(0, .05, .15);
+  goalPlane.rotation.y = Math.PI;
+
+  const goalPlaneEntity = world.createTransformEntity(goalPlane);
+  goalPlaneEntity.addComponent(PhysicsShape, {
+    shape: PhysicsShapeType.Box,
+    dimensions: [1, 1, 0.1],
+    isTrigger: true,
+  });
+
+  goalPlaneEntity.addComponent(PhysicsBody, { state: PhysicsState.STATIC });
+
+  //Ball
+  const ballMesh = new Mesh( 
+    new SphereGeometry(0.25, 32, 32),
+    new MeshStandardMaterial({ color: 0x32cd32 })
+  );
+  ballMesh.position.set(2, 1, 0);
+  
+  const ballEntity = world.createTransformEntity(ballMesh);
+  ballEntity.addComponent(PhysicsShape, { 
+    shape: PhysicsShapeType.Sphere,
+    dimensions: [0.25, 0, 0],
+  });
+
+  ballEntity.addComponent(PhysicsBody, { state: PhysicsState.DYNAMIC });
+ 
+  let score = 0;
+
+  goalPlaneEntity.addEventListener("triggerenter", (evt) => {
+  const other = evt.other;
+
+  if (other === ballEntity) {
+    score++;
+    console.log("GOAL! Score =", score);
+
+    ballMesh.position.set(0, 1, 0);
+  }
+
+
 
 
 
