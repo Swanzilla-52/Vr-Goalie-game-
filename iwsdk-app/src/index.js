@@ -113,6 +113,8 @@ World.create(document.getElementById('scene-container'), {
     state: PhysicsState.Static,
   });
 
+  goalPlaneEntity.object3D.visible = false;
+
   // Ball
   const ballMesh = new Mesh( 
     new SphereGeometry(0.25, 32, 32),
@@ -176,23 +178,22 @@ World.create(document.getElementById('scene-container'), {
 
   updateScoreboard(); // draw initial "Score: 0"
 
-  goalPlaneEntity.addEventListener('triggerenter', (event) => {
+  goalPlaneEntity.addEventListener("triggerenter", (evt) => {
+    const other = evt.other ?? evt.detail?.other;
 
-    const other = event.other ?? event.detail?.other;
-    if (!other || other !== ballEntity) return;   // only react to the ball
+    if (other !== ballEntity) return;
 
     score++;
-    console.log('GOAL! Score =', score);
+    console.log("GOAL!", score);
 
-    try {
-      goalSound.currentTime = 0;
-      goalSound.play();
-    } catch (e) {
-      console.warn('Could not play goal sound:', e);
-    }
+    // Play sound
+    goalSound.currentTime = 0;
+    goalSound.play();
 
+    
     updateScoreboard();
 
+    // Reset ball
     ballMesh.position.set(0, 1.5, -10);
 
     ballEntity.addComponent(PhysicsManipulation, {
