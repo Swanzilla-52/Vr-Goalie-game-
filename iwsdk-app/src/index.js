@@ -1,7 +1,6 @@
 import {
   Mesh,
   MeshStandardMaterial,
-  PlaneGeometry,
   SessionMode,
   World,
   LocomotionEnvironment,
@@ -46,12 +45,15 @@ World.create(document.getElementById('scene-container'), {
 
   features: { 
     locomotion: true,
-    grabbing: true, 
+    grabbing: true,
+    physics: true, 
   },
 
 }).then((world) => {
 
   const { camera } = world;
+
+  world.registerSystem(PhysicsState).registerComponent(PhysicsBody).registerComponent(PhysicsShape);
   
   //fieldTurf
   const fieldModel = AssetManager.getGLTF('turf').scene;
@@ -61,37 +63,31 @@ World.create(document.getElementById('scene-container'), {
 
   //laxGoal
   const goalModel = AssetManager.getGLTF('laxGoal').scene;
-  goalModel.position.set(0, .05, .15)
+  goalModel.position.set(0, .05, .0)
   goalModel.rotation.y = Math.PI
 
   const goalEntity = world.createTransformEntity(goalModel);
 
-  const musicEntity = world.createEntity();
-  musicEntity.addComponent(AudioSource, {
-  src: '/audio/marimba-win-b-3-209679.mp3',
-  loop: false,
-  volume: 1, 
-  positional: false
-  });
-
-  //Goal Plane
   const goalPlane = new Mesh( 
-    new PlaneGeometry(1.8, 2,1),
-    new MeshStandardMaterial({ color: 0xff0000, transparent: true })
+    new PlaneGeometry(1.8, 2),
+    new MeshStandardMaterial({ color: 0xff0000, transparent: true, opacity: 0.2 })
   );
-  goalPlane.position.set(0, .05, .15);
+  goalPlane.position.set(0, 1, 0.15);   // center in front of goal opening
   goalPlane.rotation.y = Math.PI;
 
   const goalPlaneEntity = world.createTransformEntity(goalPlane);
+
   goalPlaneEntity.addComponent(PhysicsShape, {
     shape: PhysicsShapeType.Box,
-    dimensions: [1, 1, 0.1],
+    dimensions: [1.8, 2, 0.1],
     isTrigger: true,
   });
 
-  goalPlaneEntity.addComponent(PhysicsBody, { state: PhysicsState.STATIC });
+  goalPlaneEntity.addComponent(PhysicsBody, { 
+    state: PhysicsState.Static,
+  });
 
-  //Ball
+  // Ball
   const ballMesh = new Mesh( 
     new SphereGeometry(0.25, 32, 32),
     new MeshStandardMaterial({ color: 0x32cd32 })
@@ -99,31 +95,29 @@ World.create(document.getElementById('scene-container'), {
   ballMesh.position.set(2, 1, 0);
   
   const ballEntity = world.createTransformEntity(ballMesh);
+
   ballEntity.addComponent(PhysicsShape, { 
     shape: PhysicsShapeType.Sphere,
     dimensions: [0.25, 0, 0],
   });
 
-  ballEntity.addComponent(PhysicsBody, { state: PhysicsState.DYNAMIC });
+  ballEntity.addComponent(PhysicsBody, { 
+    state: PhysicsState.Dynamic,
+  });
  
   let score = 0;
 
   goalPlaneEntity.addEventListener("triggerenter", (evt) => {
-  const other = evt.other;
+    const other = evt.other;
 
-  if (other === ballEntity) {
-    score++;
-    console.log("GOAL! Score =", score);
+    if (other === ballEntity) {
+      score++;
+      console.log("GOAL! Score =", score);
 
-    ballMesh.position.set(0, 1, 0);
-  }
+      ballMesh.position.set(2, 1, 0);
+    }
+  });
 
-
-
-
-
-
-  
 
 
 
