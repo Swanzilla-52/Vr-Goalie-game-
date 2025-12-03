@@ -1,6 +1,7 @@
 import {
   Mesh,
   MeshStandardMaterial,
+  MeshBasicMaterial,
   PlaneGeometry,
   SessionMode,
   World,
@@ -13,6 +14,13 @@ import {
   PhysicsShapeType,
   PhysicsState,
   PhysicsShape,
+  DistanceGrabbable,
+  CanvasTexture,
+  DoubleSide,
+  AudioSource,
+  AudioUtils,
+  PhysicsManipulation,
+  PhysicsSystem,
 } from '@iwsdk/core';
 
 import {
@@ -52,13 +60,30 @@ World.create(document.getElementById('scene-container'), {
 }).then((world) => {
 
   const { camera, scene } = world;
-  
+
+  world
+  .registerSystem(PhysicsSystem)
+  .registerComponent(PhysicsBody)
+  .registerComponent(PhysicsShape);
+
+  const goalSound = new Audio('/audio/goal.mp3');
+  goalSound.preload = 'auto';
+
   // fieldTurf
   const fieldModel = AssetManager.getGLTF('turf').scene;
   scene.add(fieldModel);
 
   const fieldEntity = world.createTransformEntity(fieldModel);
   fieldEntity.addComponent(LocomotionEnvironment, { type: EnvironmentType.STATIC });
+
+  fieldEntity.addComponent(PhysicsShape, {
+  shape: PhysicsShapeType.Box,
+  dimensions: [20, 0.5, 40],
+  });
+
+  fieldEntity.addComponent(PhysicsBody, {
+  state: PhysicsState.Static,
+  });
 
   // laxGoal
   const goalModel = AssetManager.getGLTF('laxGoal').scene;
@@ -70,7 +95,7 @@ World.create(document.getElementById('scene-container'), {
 
   // Goal Plane (trigger)
   const goalPlane = new Mesh( 
-    new PlaneGeometry(1.8, 2),
+    new PlaneGeometry(1.8, 1.8),
     new MeshStandardMaterial({ color: 0xff0000, transparent: true, opacity: 0.2 })
   );
   goalPlane.position.set(0, 1, 0.15);   // roughly center of the net
@@ -80,7 +105,7 @@ World.create(document.getElementById('scene-container'), {
   const goalPlaneEntity = world.createTransformEntity(goalPlane);
   goalPlaneEntity.addComponent(PhysicsShape, {
     shape: PhysicsShapeType.Box,
-    dimensions: [1.8, 2, 0.1],   // thin invisible box in front of goal
+    dimensions: [1.8, 1.8, 0.1],   
     isTrigger: true,
   });
 
@@ -93,31 +118,87 @@ World.create(document.getElementById('scene-container'), {
     new SphereGeometry(0.25, 32, 32),
     new MeshStandardMaterial({ color: 0x32cd32 })
   );
-  ballMesh.position.set(2, 1, 0);
+  ballMesh.position.set(0, 1.5, -10);
   scene.add(ballMesh);
   
   const ballEntity = world.createTransformEntity(ballMesh);
   ballEntity.addComponent(PhysicsShape, { 
     shape: PhysicsShapeType.Sphere,
     dimensions: [0.25, 0, 0],
+    restitution: 0.7,
   });
 
   ballEntity.addComponent(PhysicsBody, { 
     state: PhysicsState.Dynamic,
   });
  
+  ballEntity.addComponent(Interactable).addComponent(DistanceGrabbable);
+  ballEntity.addComponent(LocomotionEnvironment, { type: EnvironmentType.LOCAL_FLOOR });
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 2048;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.font = 'bold 120px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'red';
+  ctx.fillText('Score: 0', canvas.width / 2, canvas.height / 2 + 16);
+  
+  const texture = new CanvasTexture(canvas);
+  const aspect = canvas.width / canvas.height;
+  const boardWidth = 2;                 // world units
+  const boardHeight = boardWidth / aspect;
+  
+  const boardMat = new MeshBasicMaterial({ 
+    map: texture, 
+    transparent: true,  
+    side: DoubleSide,});
+
+  const boardGeo = new PlaneGeometry(12, 1.5);
+  const boardMesh = new Mesh(boardGeo, boardMat);
+  const boardEntity = world.createTransformEntity(boardMesh);
+
+  boardEntity.object3D.position.set(0, 5, -20);  // in front of the user
+  boardEntity.object3D.visible = true; // start hidden
+  boardEntity.object3D.rotation.set(0, Math.PI / 4, 0);
+  boardEntity.object3D.lookAt(camera.position);
+
   let score = 0;
 
-  goalPlaneEntity.addEventListener("triggerenter", (evt) => {
-    const other = evt.other;
+  function updateScoreboard() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.font = 'bold 120px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'red';
+  ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2 + 16);
+  texture.needsUpdate = true;
+  }
 
-    if (other === ballEntity) {
-      score++;
-      console.log("GOAL! Score =", score);
+  updateScoreboard(); // draw initial "Score: 0"
 
-      // reset ball
-      ballMesh.position.set(2, 1, 0);
+  goalPlaneEntity.addEventListener('triggerenter', (event) => {
+
+    const other = event.other ?? event.detail?.other;
+    if (!other || other !== ballEntity) return;   // only react to the ball
+
+    score++;
+    console.log('GOAL! Score =', score);
+
+    try {
+      goalSound.currentTime = 0;
+      goalSound.play();
+    } catch (e) {
+      console.warn('Could not play goal sound:', e);
     }
+
+    updateScoreboard();
+
+    ballMesh.position.set(0, 1.5, -10);
+
+    ballEntity.addComponent(PhysicsManipulation, {
+      linearVelocity: [0, 0, 0],
+      angularVelocity: [0, 0, 0],
+    });
   });
 
   // vvvvvvvv EVERYTHING BELOW WAS ADDED TO DISPLAY A BUTTON TO ENTER VR FOR QUEST 1 DEVICES vvvvvv
