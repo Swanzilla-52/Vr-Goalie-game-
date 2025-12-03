@@ -1,6 +1,7 @@
 import {
   Mesh,
   MeshStandardMaterial,
+  PlaneGeometry,
   SessionMode,
   World,
   LocomotionEnvironment,
@@ -12,8 +13,6 @@ import {
   PhysicsShapeType,
   PhysicsState,
   PhysicsShape,
-  PhysicsSystem,
-  PlaneGeometry,
 } from '@iwsdk/core';
 
 import {
@@ -35,7 +34,7 @@ const assets = {
     type: AssetType.GLTF,
     proirity: 'critical',
   },
- };
+};
 
 World.create(document.getElementById('scene-container'), {
   assets,
@@ -47,41 +46,41 @@ World.create(document.getElementById('scene-container'), {
 
   features: { 
     locomotion: true,
-    grabbing: true,
-    physics: true, 
+    grabbing: true, 
   },
 
 }).then((world) => {
 
-  const { camera } = world;
-
-  world.registerSystem(PhysicsSystem).registerComponent(PhysicsBody).registerComponent(PhysicsShape);
+  const { camera, scene } = world;
   
-  //fieldTurf
+  // fieldTurf
   const fieldModel = AssetManager.getGLTF('turf').scene;
+  scene.add(fieldModel);
 
   const fieldEntity = world.createTransformEntity(fieldModel);
   fieldEntity.addComponent(LocomotionEnvironment, { type: EnvironmentType.STATIC });
 
-  //laxGoal
+  // laxGoal
   const goalModel = AssetManager.getGLTF('laxGoal').scene;
-  goalModel.position.set(0, .05, .0)
-  goalModel.rotation.y = Math.PI
+  goalModel.position.set(0, 0.05, 0.15);
+  goalModel.rotation.y = Math.PI;
+  scene.add(goalModel);
 
   const goalEntity = world.createTransformEntity(goalModel);
 
+  // Goal Plane (trigger)
   const goalPlane = new Mesh( 
     new PlaneGeometry(1.8, 2),
     new MeshStandardMaterial({ color: 0xff0000, transparent: true, opacity: 0.2 })
   );
-  goalPlane.position.set(0, 1, 0.15);   // center in front of goal opening
+  goalPlane.position.set(0, 1, 0.15);   // roughly center of the net
   goalPlane.rotation.y = Math.PI;
+  scene.add(goalPlane);
 
   const goalPlaneEntity = world.createTransformEntity(goalPlane);
-
   goalPlaneEntity.addComponent(PhysicsShape, {
     shape: PhysicsShapeType.Box,
-    dimensions: [1.8, 2, 0.1],
+    dimensions: [1.8, 2, 0.1],   // thin invisible box in front of goal
     isTrigger: true,
   });
 
@@ -95,9 +94,9 @@ World.create(document.getElementById('scene-container'), {
     new MeshStandardMaterial({ color: 0x32cd32 })
   );
   ballMesh.position.set(2, 1, 0);
+  scene.add(ballMesh);
   
   const ballEntity = world.createTransformEntity(ballMesh);
-
   ballEntity.addComponent(PhysicsShape, { 
     shape: PhysicsShapeType.Sphere,
     dimensions: [0.25, 0, 0],
@@ -109,30 +108,17 @@ World.create(document.getElementById('scene-container'), {
  
   let score = 0;
 
-  function resetBall() {
-    // reset visual
-    ballMesh.position.set(2, 1, 0);
-
-    // reset physics (adjust to your API if needed)
-    ballBody.linearVelocity = [0, 0, 0];
-    ballBody.angularVelocity = [0, 0, 0];
-  }
-
-  goalPlaneEntity.object3D.addEventListener('triggerenter', (evt) => {
+  goalPlaneEntity.addEventListener("triggerenter", (evt) => {
     const other = evt.other;
 
-    // other is usually the Object3D for the other collider
-    if (other === ballEntity.object3D) {
+    if (other === ballEntity) {
       score++;
-      console.log('GOAL! Score =', score);
-      resetBall();
+      console.log("GOAL! Score =", score);
+
+      // reset ball
+      ballMesh.position.set(2, 1, 0);
     }
   });
-
-
-
-
-
 
   // vvvvvvvv EVERYTHING BELOW WAS ADDED TO DISPLAY A BUTTON TO ENTER VR FOR QUEST 1 DEVICES vvvvvv
   //          (for some reason IWSDK doesn't show Enter VR button on Quest 1)
