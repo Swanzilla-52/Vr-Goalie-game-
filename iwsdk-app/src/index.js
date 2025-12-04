@@ -30,6 +30,7 @@ import {
 } from '@iwsdk/core';
 
 import { PanelSystem } from './panel.js'; // system for displaying "Enter VR" panel on Quest 1
+import { createSystem } from '@iwsdk/core';
 
 const assets = {
   turf: {
@@ -87,33 +88,11 @@ World.create(document.getElementById('scene-container'), {
 
   // laxGoal
   const goalModel = AssetManager.getGLTF('laxGoal').scene;
-  goalModel.position.set(0, 0.05, 0.15);
+  goalModel.position.set(0, 0.05, 0);
   goalModel.rotation.y = Math.PI;
   scene.add(goalModel);
 
   const goalEntity = world.createTransformEntity(goalModel);
-
-  // Goal Plane (trigger)
-  const goalPlane = new Mesh( 
-    new PlaneGeometry(1.8, 1.8),
-    new MeshStandardMaterial({ color: 0xff0000, transparent: true, opacity: 0.2 })
-  );
-  goalPlane.position.set(0, 1, 0.15);   // roughly center of the net
-  goalPlane.rotation.y = Math.PI;
-  scene.add(goalPlane);
-
-  const goalPlaneEntity = world.createTransformEntity(goalPlane);
-  goalPlaneEntity.addComponent(PhysicsShape, {
-    shape: PhysicsShapeType.Box,
-    dimensions: [1.8, 1.8, 0.1],   
-    isTrigger: true,
-  });
-
-  goalPlaneEntity.addComponent(PhysicsBody, { 
-    state: PhysicsState.Static,
-  });
-
-  goalPlaneEntity.object3D.visible = false;
 
   // Ball
   const ballMesh = new Mesh( 
@@ -166,41 +145,64 @@ World.create(document.getElementById('scene-container'), {
   boardEntity.object3D.lookAt(camera.position);
 
   let score = 0;
-
   function updateScoreboard() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.font = 'bold 120px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillStyle = 'red';
-  ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2 + 16);
-  texture.needsUpdate = true;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (score > 0){
+      ctx.font = 'bold 200px sans-serif';
+      ctx.fillStyle = 'green';
+      ctx.textAlign = 'center';
+      ctx.fillText('YOU LOST', canvas.width / 2, canvas.height / 2 + 50);
+    } else {
+      // Display regular score
+      ctx.font = 'bold 150px sans-serif';
+      ctx.fillStyle = 'green';
+      ctx.textAlign = 'center';
+      ctx.fillText(`NO GOALS ALLOWED`, canvas.width / 2, canvas.height / 2 + 40);
+    }
+      texture.needsUpdate = true;
+
   }
+  updateScoreboard();
 
-  updateScoreboard(); // draw initial "Score: 0"
 
-  goalPlaneEntity.addEventListener("triggerenter", (evt) => {
-    const other = evt.other ?? evt.detail?.other;
-
-    if (other !== ballEntity) return;
-
-    score++;
-    console.log("GOAL!", score);
-
-    // Play sound
-    goalSound.currentTime = 0;
-    goalSound.play();
-
-    
-    updateScoreboard();
-
-    // Reset ball
-    ballMesh.position.set(0, 1.5, -10);
-
-    ballEntity.addComponent(PhysicsManipulation, {
-      linearVelocity: [0, 0, 0],
-      angularVelocity: [0, 0, 0],
-    });
+  const musicEntity = world.createEntity();
+  musicEntity.addComponent(AudioSource, {
+  src: '/audio/goal.mp3',
+  loop: false,
+  volume: 1, 
+  positional: false
   });
+ 
+
+ let sphereExists = true;
+
+  const GameLoopSystem = class extends createSystem() {
+    update(delta, time) {
+      if(sphereExists){
+      const ballPos = ballEntity.object3D.position;
+
+      if (
+      ballPos.y < 1.83 &&
+      ballPos.x > -0.91 &&
+      ballPos.x < 0.91 &&
+      ballPos.z > -.02 &&
+      ballPos.z < 2.0 
+      ){
+        console.log("Ball is inside the cubs");
+      
+        AudioUtils.play(musicEntity); 
+        score += 1
+        updateScoreboard();
+                
+        sphereExists = false;
+
+        }
+      }
+    }
+
+  };
+  world.registerSystem(GameLoopSystem);
+  
 
   // vvvvvvvv EVERYTHING BELOW WAS ADDED TO DISPLAY A BUTTON TO ENTER VR FOR QUEST 1 DEVICES vvvvvv
   //          (for some reason IWSDK doesn't show Enter VR button on Quest 1)
