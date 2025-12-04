@@ -43,6 +43,11 @@ const assets = {
     type: AssetType.GLTF,
     proirity: 'critical',
   },
+  goalieStick: {
+    url: '/gltf/stick/goalie_stick.glb',
+    type: AssetType.GLTF,
+    proirity: 'critical',
+  },
 };
 
 World.create(document.getElementById('scene-container'), {
@@ -93,6 +98,15 @@ World.create(document.getElementById('scene-container'), {
   scene.add(goalModel);
 
   const goalEntity = world.createTransformEntity(goalModel);
+  goalEntity.addComponent(PhysicsBody, { 
+    state: PhysicsState.Dynamic,
+  });
+
+  //Stick
+  const stickModel = AssetManager.getGLTF('goalieStick').scene;
+  stickModel.position.set(0, 1, -1);
+
+  const stickEntitiy = world.createTransformEntity(stickModel);
 
   // Ball
   const ballMesh = new Mesh( 
@@ -110,11 +124,16 @@ World.create(document.getElementById('scene-container'), {
   });
 
   ballEntity.addComponent(PhysicsBody, { 
-    state: PhysicsState.Dynamic,
+    state: PhysicsState.Static,
   });
  
   ballEntity.addComponent(Interactable).addComponent(DistanceGrabbable);
   ballEntity.addComponent(LocomotionEnvironment, { type: EnvironmentType.LOCAL_FLOOR });
+
+  setTimeout(() => {
+  ballEntity.addComponent(PhysicsBody, { type: PhysicsState.Dynamic });
+  ballEntity.addComponent(PhysicsManipulation, { linearVelocity: [0, 0, 15] });
+  }, 10000);
 
   const canvas = document.createElement('canvas');
   canvas.width = 2048;
