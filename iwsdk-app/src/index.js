@@ -99,7 +99,7 @@ World.create(document.getElementById('scene-container'), {
 
   const goalEntity = world.createTransformEntity(goalModel);
   goalEntity.addComponent(PhysicsBody, { 
-    state: PhysicsState.Dynamic,
+    state: PhysicsState.Static,
   });
 
   //Stick
