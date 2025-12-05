@@ -113,31 +113,42 @@ World.create(document.getElementById('scene-container'), {
   stickEntitiy.addComponent(Interactable).addComponent(OneHandGrabbable);
 
   // Ball
-  const ballMesh = new Mesh( 
-    new SphereGeometry(0.25, 32, 32),
-    new MeshStandardMaterial({ color: 0x32cd32 })
-  );
-  ballMesh.position.set(0, 1.5, -10);
-  scene.add(ballMesh);
-  
-  const ballEntity = world.createTransformEntity(ballMesh);
-  ballEntity.addComponent(PhysicsShape, { 
-    shape: PhysicsShapeType.Sphere,
-    dimensions: [0.25, 0, 0],
-    restitution: 0.7,
-  });
+  function createBall() {
+    const ballMesh = new Mesh(
+      new SphereGeometry(0.25, 32, 32),
+      new MeshStandardMaterial({ color: 0x32cd32 })
+    );
+    // spawn at home position
+    ballMesh.position.set(0, 1.5, -10);
+    scene.add(ballMesh);
+    
+    const entity = world.createTransformEntity(ballMesh);
 
-  ballEntity.addComponent(PhysicsBody, { 
-    state: PhysicsState.Static,
-  });
- 
-  ballEntity.addComponent(Interactable).addComponent(DistanceGrabbable);
+    entity.addComponent(PhysicsShape, { 
+      shape: PhysicsShapeType.Sphere,
+      dimensions: [0.25, 0, 0],
+      restitution: 0.7,
+    });
 
-  setTimeout(() => {
-  ballEntity.addComponent(PhysicsBody, { type: PhysicsState.Dynamic });
-  ballEntity.addComponent(PhysicsManipulation, { linearVelocity: [0, 0, 15] });
-  }, 10000);
+    entity.addComponent(PhysicsBody, { 
+      state: PhysicsState.Static,
+    });
+   
+    entity.addComponent(Interactable).addComponent(DistanceGrabbable);
 
+    // give it motion after a delay (same as before)
+    setTimeout(() => {
+      // only do this if the ball still exists
+      if (!entity.destroyed) {
+        entity.addComponent(PhysicsBody, { type: PhysicsState.Dynamic });
+        entity.addComponent(PhysicsManipulation, { linearVelocity: [0, 0, 15] });
+      }
+    }, 10000);
+
+    return entity;
+  }
+
+  let ballEntity = createBall();
   const canvas = document.createElement('canvas');
   canvas.width = 2048;
   canvas.height = 300;
@@ -222,14 +233,17 @@ World.create(document.getElementById('scene-container'), {
         updateScoreboard();
                 
         sphereExists = false;
+        ballEntity.destroy();
+        ballEntity = null;
         
-        if (sphereExists = false) {
-          ballEntity.destroy()
-        }
+        setTimeout(() => {
+          ballEntity = createBall();
+          sphereExists = true;
+        }, 1000);
+
         }
       }
     }
-
   };
   world.registerSystem(GameLoopSystem);
   
