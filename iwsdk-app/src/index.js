@@ -147,7 +147,7 @@ World.create(document.getElementById('scene-container'), {
   
   const texture = new CanvasTexture(canvas);
   const aspect = canvas.width / canvas.height;
-  const boardWidth = 2;                 // world units
+  const boardWidth = 2;                 
   const boardHeight = boardWidth / aspect;
   
   const boardMat = new MeshBasicMaterial({ 
@@ -159,8 +159,8 @@ World.create(document.getElementById('scene-container'), {
   const boardMesh = new Mesh(boardGeo, boardMat);
   const boardEntity = world.createTransformEntity(boardMesh);
 
-  boardEntity.object3D.position.set(0, 5, -20);  // in front of the user
-  boardEntity.object3D.visible = true; // start hidden
+  boardEntity.object3D.position.set(0, 5, -20);  
+  boardEntity.object3D.visible = true; 
   boardEntity.object3D.rotation.set(0, Math.PI / 4, 0);
   boardEntity.object3D.lookAt(camera.position);
 
@@ -173,7 +173,6 @@ World.create(document.getElementById('scene-container'), {
       ctx.textAlign = 'center';
       ctx.fillText('YOU LOST', canvas.width / 2, canvas.height / 2 + 50);
     } else {
-      // Display regular score
       ctx.font = 'bold 150px sans-serif';
       ctx.fillStyle = 'green';
       ctx.textAlign = 'center';
