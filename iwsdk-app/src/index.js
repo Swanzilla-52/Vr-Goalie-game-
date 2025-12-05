@@ -21,6 +21,7 @@ import {
   AudioUtils,
   PhysicsManipulation,
   PhysicsSystem,
+  OneHandGrabbable,
 } from '@iwsdk/core';
 
 import {
@@ -107,8 +108,9 @@ World.create(document.getElementById('scene-container'), {
   stickModel.position.set(0, .25, -1);
 
   const stickEntitiy = world.createTransformEntity(stickModel);
-  stickEntitiy.addComponent(PhysicsBody, { type: PhysicsState.Dynamic });
-  stickEntitiy.addComponent(Interactable).addComponent(DistanceGrabbable);
+  stickEntitiy.addComponent(PhysicsShape, { shape: PhysicsShapeType.Auto,  density: 0.2,  friction: 0.5,  restitution: 0.9 });
+  stickEntitiy.addComponent(PhysicsBody, { type: PhysicsState.Kinematic });
+  stickEntitiy.addComponent(Interactable).addComponent(OneHandGrabbable);
 
   // Ball
   const ballMesh = new Mesh( 
@@ -138,7 +140,7 @@ World.create(document.getElementById('scene-container'), {
 
   const canvas = document.createElement('canvas');
   canvas.width = 2048;
-  canvas.height = 256;
+  canvas.height = 300;
   const ctx = canvas.getContext('2d');
   ctx.font = 'bold 120px sans-serif';
   ctx.textAlign = 'center';
@@ -178,8 +180,13 @@ World.create(document.getElementById('scene-container'), {
       ctx.textAlign = 'center';
       ctx.fillText(`NO GOALS ALLOWED`, canvas.width / 2, canvas.height / 2 + 40);
     }
-      texture.needsUpdate = true;
 
+    ctx.font = 'bold 120px sans-serif';
+    ctx.fillStyle = 'green';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Score: ${score}`, canvas.width / 2, 300);
+    
+    texture.needsUpdate = true;
   }
   updateScoreboard();
 
@@ -192,6 +199,7 @@ World.create(document.getElementById('scene-container'), {
   positional: false
   });
  
+
 
  let sphereExists = true;
 
@@ -207,14 +215,17 @@ World.create(document.getElementById('scene-container'), {
       ballPos.z > -.02 &&
       ballPos.z < 2.0 
       ){
-        console.log("Ball is inside the cubs");
+        console.log("Ball is inside the cube");
       
         AudioUtils.play(musicEntity); 
         score += 1
         updateScoreboard();
                 
         sphereExists = false;
-
+        
+        if (sphereExists = false) {
+          ballEntity.destroy()
+        }
         }
       }
     }
