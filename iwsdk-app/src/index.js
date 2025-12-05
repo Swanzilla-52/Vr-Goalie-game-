@@ -204,23 +204,28 @@ function createBall() {
 
   boardEntity.object3D.position.set(0, 5, -20);  
   boardEntity.object3D.visible = true; 
-  boardEntity.object3D.rotation.set(0, Math.PI / 4, 0);
-  boardEntity.object3D.lookAt(camera.position);
 
   let score = 0;
   function updateScoreboard() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    ctx.font = 'bold 150px sans-serif';
-    ctx.fillStyle = 'green';
-    ctx.textAlign = 'center';
-    ctx.fillText(`NO GOALS ALLOWED`, canvas.width / 2, canvas.height / 2 + 40);
+    if (gameOver) {
+      ctx.font = 'bold 200px sans-serif';
+      ctx.fillStyle = 'red';
+      ctx.textAlign = 'center';
+      ctx.fillText('YOU LOSE', canvas.width / 2, canvas.height / 2 + 50);
+    } else {
+      ctx.font = 'bold 150px sans-serif';
+      ctx.fillStyle = 'green';
+      ctx.textAlign = 'center';
+      ctx.fillText('NO GOALS ALLOWED', canvas.width / 2, canvas.height / 2 + 40);
+    }
 
     ctx.font = 'bold 120px sans-serif';
     ctx.fillStyle = 'green';
     ctx.textAlign = 'center';
-    ctx.fillText(`Score: ${score}`, canvas.width / 2, 300);
-    
+    ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height - 10);
+
     texture.needsUpdate = true;
   }
   updateScoreboard();
@@ -236,10 +241,13 @@ function createBall() {
 
   const GameLoopSystem = class extends createSystem() {
     update(delta, time) {
+      if (gameOver) return;
       if (!sphereExists || !ballEntity) return;
 
-      const ballPos = ballEntity.object3D.position;
+      boardEntity.object3D.lookAt(camera.position);
 
+      const ballPos = ballEntity.object3D.position;
+      
       const now = performance.now();
       if (now - ballEntity.shotTime > 4000) {
         console.log("Ball timed out — respawning");
@@ -270,11 +278,17 @@ function createBall() {
         score += 1;
         updateScoreboard();
 
+        if (score >= 5) {
+          gameOver = true;
+          updateScoreboard();
+        }
+
         sphereExists = false;
         ballEntity.destroy();
         ballEntity = null;
 
         setTimeout(() => {
+          if (gameOver) return;
           ballEntity = createBall();
           sphereExists = true;
         }, 2500);
