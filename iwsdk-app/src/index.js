@@ -113,42 +113,72 @@ World.create(document.getElementById('scene-container'), {
   stickEntitiy.addComponent(Interactable).addComponent(OneHandGrabbable);
 
   // Ball
-  function createBall() {
-    const ballMesh = new Mesh(
-      new SphereGeometry(0.25, 32, 32),
-      new MeshStandardMaterial({ color: 0x32cd32 })
-    );
-    // spawn at home position
-    ballMesh.position.set(0, 1.5, -10);
-    scene.add(ballMesh);
-    
-    const entity = world.createTransformEntity(ballMesh);
+function createBall() {
+  const ballMesh = new Mesh(
+    new SphereGeometry(0.25, 32, 32),
+    new MeshStandardMaterial({ color: 0x32cd32 })
+  );
 
-    entity.addComponent(PhysicsShape, { 
-      shape: PhysicsShapeType.Sphere,
-      dimensions: [0.25, 0, 0],
-      restitution: 0.7,
-    });
+  // 🔹 Random spawn position (behind the goal)
+  const spawnX = (Math.random() - 0.5) * 10; // between -5 and +5
+  const spawnY = 1.5;
+  const spawnZ = -10;   
 
-    entity.addComponent(PhysicsBody, { 
-      state: PhysicsState.Static,
-    });
-   
-    entity.addComponent(Interactable).addComponent(DistanceGrabbable);
+  ballMesh.position.set(spawnX, spawnY, spawnZ);
+  scene.add(ballMesh);
 
-    // give it motion after a delay (same as before)
-    setTimeout(() => {
-      // only do this if the ball still exists
-      if (!entity.destroyed) {
-        entity.addComponent(PhysicsBody, { type: PhysicsState.Dynamic });
-        entity.addComponent(PhysicsManipulation, { linearVelocity: [0, 0, 15] });
-      }
-    }, 10000);
+  const entity = world.createTransformEntity(ballMesh);
 
-    return entity;
-  }
+  entity.addComponent(PhysicsShape, { 
+    shape: PhysicsShapeType.Sphere,
+    dimensions: [0.25, 0, 0],
+    restitution: 0.7,
+  });
 
-  let ballEntity = createBall();
+  // make the ball dynamic so it moves
+  entity.addComponent(PhysicsBody, { 
+    state: PhysicsState.Dynamic,
+  });
+
+  entity.addComponent(Interactable).addComponent(DistanceGrabbable);
+
+  // 🎯 Aim toward the center of the goal area
+  const goalTarget = { 
+    x: 0,      // center between -0.91 and 0.91
+    y: 1.2,    // mid height under y < 1.83
+    z: 1.0     // between -0.02 and 2.0
+  };
+
+  const dx = goalTarget.x - spawnX;
+  const dy = goalTarget.y - spawnY;
+  const dz = goalTarget.z - spawnZ;
+
+  const len = Math.sqrt(dx*dx + dy*dy + dz*dz) || 1;
+  const speed = 12; // tweak speed as you like
+
+  const vx = (dx / len) * speed;
+  const vy = (dy / len) * speed;
+  const vz = (dz / len) * speed;
+
+  // 🚀 Shoot the ball toward the goal
+  entity.addComponent(PhysicsManipulation, { 
+    linearVelocity: [vx, vy, vz],
+  });
+
+  entity.shotTime = performance.now();
+
+  return entity;
+}
+
+  let ballEntity = null;
+  let sphereExists = false;
+  let gameOver = false;
+
+  setTimeout(() => {
+    ballEntity = createBall();
+    sphereExists = true;
+  }, 5000);
+
   const canvas = document.createElement('canvas');
   canvas.width = 2048;
   canvas.height = 300;
@@ -180,17 +210,11 @@ World.create(document.getElementById('scene-container'), {
   let score = 0;
   function updateScoreboard() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (score > 0){
-      ctx.font = 'bold 200px sans-serif';
-      ctx.fillStyle = 'green';
-      ctx.textAlign = 'center';
-      ctx.fillText('YOU LOST', canvas.width / 2, canvas.height / 2 + 50);
-    } else {
-      ctx.font = 'bold 150px sans-serif';
-      ctx.fillStyle = 'green';
-      ctx.textAlign = 'center';
-      ctx.fillText(`NO GOALS ALLOWED`, canvas.width / 2, canvas.height / 2 + 40);
-    }
+
+    ctx.font = 'bold 150px sans-serif';
+    ctx.fillStyle = 'green';
+    ctx.textAlign = 'center';
+    ctx.fillText(`NO GOALS ALLOWED`, canvas.width / 2, canvas.height / 2 + 40);
 
     ctx.font = 'bold 120px sans-serif';
     ctx.fillStyle = 'green';
@@ -209,39 +233,53 @@ World.create(document.getElementById('scene-container'), {
   volume: 1, 
   positional: false
   });
- 
-
-
- let sphereExists = true;
 
   const GameLoopSystem = class extends createSystem() {
     update(delta, time) {
-      if(sphereExists){
+      if (!sphereExists || !ballEntity) return;
+
       const ballPos = ballEntity.object3D.position;
 
-      if (
-      ballPos.y < 1.83 &&
-      ballPos.x > -0.91 &&
-      ballPos.x < 0.91 &&
-      ballPos.z > -.02 &&
-      ballPos.z < 2.0 
-      ){
-        console.log("Ball is inside the cube");
-      
-        AudioUtils.play(musicEntity); 
-        score += 1
-        updateScoreboard();
-                
+      const now = performance.now();
+      if (now - ballEntity.shotTime > 4000) {
+        console.log("Ball timed out — respawning");
+
         sphereExists = false;
         ballEntity.destroy();
         ballEntity = null;
-        
+
         setTimeout(() => {
           ballEntity = createBall();
           sphereExists = true;
-        }, 1000);
+        }, 3000);
 
-        }
+        return;
+      }
+
+      // Goal Check
+      if (
+        ballPos.y < 1.83 &&
+        ballPos.x > -0.91 &&
+        ballPos.x < 0.91 &&
+        ballPos.z > -0.02 &&
+        ballPos.z < 2.0
+      ) {
+        console.log("Ball scored!");
+
+        AudioUtils.play(musicEntity);
+        score += 1;
+        updateScoreboard();
+
+        sphereExists = false;
+        ballEntity.destroy();
+        ballEntity = null;
+
+        setTimeout(() => {
+          ballEntity = createBall();
+          sphereExists = true;
+        }, 2500);
+
+        return;
       }
     }
   };
