@@ -104,9 +104,11 @@ World.create(document.getElementById('scene-container'), {
 
   //Stick
   const stickModel = AssetManager.getGLTF('goalieStick').scene;
-  stickModel.position.set(0, 1, -1);
+  stickModel.position.set(0, .25, -1);
 
   const stickEntitiy = world.createTransformEntity(stickModel);
+  stickEntitiy.addComponent(PhysicsBody, { type: PhysicsState.Dynamic });
+  stickEntitiy.addComponent(Interactable).addComponent(DistanceGrabbable);
 
   // Ball
   const ballMesh = new Mesh( 
@@ -128,7 +130,6 @@ World.create(document.getElementById('scene-container'), {
   });
  
   ballEntity.addComponent(Interactable).addComponent(DistanceGrabbable);
-  ballEntity.addComponent(LocomotionEnvironment, { type: EnvironmentType.LOCAL_FLOOR });
 
   setTimeout(() => {
   ballEntity.addComponent(PhysicsBody, { type: PhysicsState.Dynamic });
